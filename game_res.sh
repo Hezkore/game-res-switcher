@@ -3,6 +3,12 @@
 
 SCRIPT_NAME="Game Resolution Switcher"
 
+# Configuration
+GAME_INITIAL_TIME=5 # How long to wait before initial game check
+GAME_CHECK_TIME=2 # How often to check for the game
+GAME_FIND_ATTEMPT_COUNT=3 # How many times to attempt to find the game
+GAME_FIND_ATTEMPT_TIME=3 # How long to wait between attempts to find the game
+
 # Log file
 SCRIPT_LOG_PATH="$HOME/.log/game resolution switcher"
 SCRIPT_LOG_FILE="game_res.log"
@@ -34,6 +40,12 @@ show_error() {
 		"${ZENITY}" --error --text="$1"
 	fi
 }
+
+# Does the working directory exist?
+if [ ! -d "$GAME_PATH" ]; then
+	show_error "$SCRIPT_NAME could not find the working directory $GAME_PATH."
+	exit 1
+fi
 
 # Warn about working directories
 if [ "$GAME_PATH" == "/" ] || [ "$GAME_PATH" == "$HOME" ]; then
@@ -71,12 +83,34 @@ fi
 
 # Start a subshell in the background
 (
-	sleep 5
+	sleep $GAME_INITIAL_TIME
 	echo "Looking for processes in the working directory $GAME_PATH" >> "$SCRIPT_LOG_FULL_PATH"
+	process_found=false
+	found_attempts=0
 	while true; do
 		# Check if a process with the working directory in its command line is still running
-		if ! pgrep -af "$GAME_PATH" > /dev/null; then
-			# If no such process is running, restore the original mode for all displays and exit the loop
+		if pgrep -af "$GAME_PATH" > /dev/null; then
+			# Game is running
+			if [ "$process_found" != true ]; then
+				echo "Found active processes in the working directory $GAME_PATH" >> "$SCRIPT_LOG_FULL_PATH"
+				process_found=true
+			fi
+			sleep $GAME_CHECK_TIME
+		else
+			# Game has exited
+			if [ "$process_found" != true ]; then
+				# Count this as an attempt if we've never found the process
+				found_attempts=$((found_attempts + 1))
+				# After a few attempts we give up
+				if [ $found_attempts -ge $GAME_FIND_ATTEMPT_COUNT ]; then
+					show_error "$SCRIPT_NAME did not find any active processes in the working directory $GAME_PATH after $GAME_FIND_ATTEMPT_COUNT attempts."
+				else
+					echo "Unable to find any active processes in the working directory $GAME_PATH" >> "$SCRIPT_LOG_FULL_PATH"
+					sleep $GAME_FIND_ATTEMPT_TIME
+					continue
+				fi
+			fi
+			
 			echo "No active processes found in the working directory $GAME_PATH" >> "$SCRIPT_LOG_FULL_PATH"
 			for command in "${restore_commands[@]}"; do
 				eval "$command"
@@ -84,7 +118,6 @@ fi
 			done
 			exit 0
 		fi
-		sleep 2
 	done
 ) &
 exit 0

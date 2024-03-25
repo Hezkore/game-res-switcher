@@ -30,18 +30,18 @@ curl -sS https://raw.githubusercontent.com/hezkore/game-res-switcher/main/instal
 
 <details>
 <summary><b>Manual Installation</b></summary>
-1. Clone or download the repository:
 
+1. Clone or download the repository:
 	```bash
 	git clone https://github.com/hezkore/game-res-switcher.git
 	```
-2. Make the script executable:
 
+2. Make the script executable:
 	```bash
 	chmod +x game_res.sh
 	```
 
-3. Move `game_res.sh` to `/usr/local/bin` as `game_res`
+3. Move or symlink `game_res.sh` to `/usr/local/bin` as `game_res`
 </details>
 
 ## Usage
